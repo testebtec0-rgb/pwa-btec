@@ -3,9 +3,16 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzsLDGvP1dWjw
 
 let db;
 let configuracaoCampos = [];
-let dadosValidacaoBtec = { ultimoHorimetro: 0, ultimoOdometro: 0, linkEquipamento: "" };
+// Objeto que guardará as informações automáticas vindas da planilha
+let dadosValidacaoBtec = { 
+    ultimoHorimetro: 0, 
+    ultimoOdometro: 0, 
+    linkEquipamento: "",
+    tipoEquipamento: "", // Novo: Tipo/Modelo automático
+    familiaFrota: ""     // Novo: Família automática caso não venha no QR Code
+};
 
-// 1. PERSISTÊNCIA OFFLINE (IndexedDB de Alta Performance)
+// 1. PERSISTÊNCIA OFFLINE (IndexedDB)
 const request = indexedDB.open("BtecModuloFrotaDB", 1);
 request.onupgradeneeded = function(e) {
     db = e.target.result;
@@ -26,12 +33,14 @@ function gerenciarFluxoDeRede() {
     const prefixo = urlParams.get('prefixo') || "BTEC-GERAL";
     
     if (navigator.onLine) {
+        // Pede as informações específicas do equipamento para a API
         fetch(`${GOOGLE_SCRIPT_URL}?prefixo=${prefixo}`)
             .then(res => res.json())
             .then(data => {
                 configuracaoCampos = data.configuracao;
                 dadosValidacaoBtec = data.validacao;
                 
+                // Salva no banco local para uso se o sinal cair na próxima vez
                 const tx = db.transaction(["configuracao"], "readwrite");
                 tx.objectStore("configuracao").put({ id: "cache_operacional", configuracao: data.configuracao, validacao: data.validacao });
                 
@@ -54,11 +63,14 @@ function carregarDadosDoCache(prefixo) {
     };
 }
 
-// 2. CONSTRUÇÃO DO FORMULÁRIO DINÂMICO E BOTÕES DE DOCUMENTAÇÃO
+// 2. CONSTRUÇÃO DO FORMULÁRIO COM PREENCHIMENTO AUTOMÁTICO DE INFOS
 function construirInterfaceDinamica(prefixo) {
     const urlParams = new URLSearchParams(window.location.search);
-    const familia = (urlParams.get('familia') || "TRANSPORTE").toUpperCase();
     
+    // PREENCHIMENTO AUTOMÁTICO: Prioriza a Família que vem da planilha, senão usa a do link, senão 'TRANSPORTE'
+    const familia = (dadosValidacaoBtec.familiaFrota || urlParams.get('familia') || "TRANSPORTE").toUpperCase();
+    
+    // Injeta os dados nos inputs escondidos e nos textos do topo
     document.getElementById('prefixo').value = prefixo;
     document.getElementById('familia').value = familia;
     document.getElementById('label-prefixo').textContent = prefixo;
@@ -67,12 +79,15 @@ function construirInterfaceDinamica(prefixo) {
     const wrapper = document.getElementById('campos-dinamicos');
     wrapper.innerHTML = "";
 
+    // Painel superior com atualizações automáticas sobre o veículo
     const painelMotorista = document.getElementById('painel-assistente-motorista');
     painelMotorista.classList.remove('hidden');
-    painelMotorista.innerHTML = `👋 <strong>Olá, Motorista/Operador BTEC!</strong><br>Preencha os dados abaixo para iniciar as validações automatizadas.`;
+    
+    const tipoTexto = dadosValidacaoBtec.tipoEquipamento ? ` do tipo <strong>${dadosValidacaoBtec.tipoEquipamento}</strong>` : "";
+    painelMotorista.innerHTML = `👋 <strong>Olá, Motorista!</strong><br>Veículo ${prefixo}${tipoTexto} identificado com sucesso. Preencha as informações restantes abaixo.`;
     painelMotorista.style.borderLeftColor = "rgba(255,255,255,0.3)";
 
-    // Se houver Link de Documentação específico cadastrado na aba VALIDACAO_FROTA
+    // Preenchimento automático: Link de Manual/Documentação se existir na planilha
     if (dadosValidacaoBtec.linkEquipamento) {
         const btnLink = document.createElement('a');
         btnLink.href = dadosValidacaoBtec.linkEquipamento;
@@ -82,6 +97,7 @@ function construirInterfaceDinamica(prefixo) {
         wrapper.appendChild(btnLink);
     }
     
+    // Monta apenas os campos configurados para a família desse veículo
     configuracaoCampos.forEach(item => {
         if (item.familias.includes(familia)) {
             const group = document.createElement('div');
@@ -101,10 +117,9 @@ function construirInterfaceDinamica(prefixo) {
                     inputField.appendChild(o);
                 });
 
-                // Resposta de texto automática ao selecionar colaborador
                 inputField.addEventListener('change', function() {
                     if(item.campo === "colaborador" && this.value) {
-                        painelMotorista.innerHTML = `📋 <strong>Operador Ativo:</strong> ${this.value}.<br>Por favor, insira as medições com atenção. Lembre-se de preencher a Parte Diária Física!`;
+                        painelMotorista.innerHTML = `📋 <strong>Operador Ativo:</strong> ${this.value}.<br>Por favor, insira as medições. Lembre-se de preencher a Parte Diária Física!`;
                         painelMotorista.style.borderLeftColor = "var(--cor-sucesso)";
                     }
                 });
@@ -113,10 +128,8 @@ function construirInterfaceDinamica(prefixo) {
                 inputField = document.createElement('textarea');
                 inputField.rows = 3;
             } else if (item.tipo === "file") {
-                // Captura de Foto com Câmera e conversão automática para String Base64
                 inputField = document.createElement('input');
-                inputField.type = "file";
-                inputField.accept = "image/*";
+                inputField.type = "file"; inputField.accept = "image/*";
                 inputField.setAttribute("capture", "environment");
                 
                 const previewImg = document.createElement('img');
@@ -147,7 +160,7 @@ function construirInterfaceDinamica(prefixo) {
                         this.value = this.value.replace(/[^0-9.]/g, '');
                         if ((this.value.match(/\./g) || []).length > 1) this.value = this.value.replace(/\.+$/, "");
                         
-                        // Executa as respostas de texto automáticas ao motorista
+                        // Validações cruzadas de histórico baseadas nas informações automáticas da planilha
                         gerarRespostasTextoParaMotoristas(item.campo, this.value, feedbackDiv, painelMotorista);
                     });
                 }
@@ -169,7 +182,7 @@ function construirInterfaceDinamica(prefixo) {
     });
 }
 
-// 3. INTELIGÊNCIA DE RESPOSTAS AUTOMÁTICAS E CRITICIDADE EM TEMPO REAL
+// 3. LOGICA DE RESPOSTAS TEXTUAIS COMPARATIVAS
 function gerarRespostasTextoParaMotoristas(campo, valorDigitado, divAlertaLocal, divPainelSuperior) {
     if(!valorDigitado) { divAlertaLocal.textContent = ""; return; }
     const valor = Number(valorDigitado);
@@ -206,7 +219,7 @@ function gerarRespostasTextoParaMotoristas(campo, valorDigitado, divAlertaLocal,
     }
 }
 
-// 4. SUBMIT FIRST COM FILA DE ARMAZENAMENTO TEMPORÁRIO
+// 4. SUBMIT FIRST COM FILA DE TRANSMISSÃO
 document.getElementById('form-registro').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -242,8 +255,8 @@ document.getElementById('form-registro').addEventListener('submit', function(e) 
     
     tx.oncomplete = function() {
         document.getElementById('msg-sucesso').textContent = navigator.onLine 
-            ? "Conectado! Registro e foto transmitidos com sucesso para a planilha central." 
-            : "Você está Offline! O checklist e as fotos foram protegidos na memória local e subirão assim que regressar ao pátio.";
+            ? "Conectado! Registro transmitido com sucesso para a planilha central." 
+            : "Você está Offline! O checklist foi guardado na memória e subirá assim que regressar ao pátio.";
         document.getElementById('tela-sucesso').classList.remove('hidden');
     };
 });
@@ -258,7 +271,6 @@ function atualizarIndicadorConexao() {
     }
 }
 
-// 5. SINCRONIZAÇÃO EM SEGUNDO PLANO (DESCARGA EM LOTE)
 function sincronizarFilaOcultaComNuvem() {
     if(!navigator.onLine || !db) return;
     const tx = db.transaction(["registros"], "readwrite");
