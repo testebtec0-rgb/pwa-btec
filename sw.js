@@ -1,10 +1,11 @@
 const CACHE_NAME = 'btec-frota-cache-v2';
 const ASSETS = [
-  'index.html',
-  'style.css',
-  'app.js',
-  'manifest.json',
-  'images.png'
+  './',
+  './index.html',
+  './style.css',
+  './app.js',
+  './manifest.json',
+  './images.png'
 ];
 
 self.addEventListener('install', (e) => {
