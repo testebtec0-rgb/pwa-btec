@@ -184,3 +184,41 @@ formRegistro.addEventListener("submit", async (e) => {
 
     } catch (erro) {
         console.warn("Falha de rede. Salvando em segundo plano (Modo Offline)...", erro);
+        
+        // Caso 2: Sucesso mesmo salvando offline para manter o fluxo do motorista limpo
+        exibirJanelaSucesso("Registro Concluído com Sucesso! Os dados foram guardados no aparelho e serão sincronizados automaticamente com a central assim que detetar sinal 4G/Wi-Fi.");
+        formRegistro.reset();
+        
+    } finally {
+        btnEnvio.disabled = false;
+        btnEnvio.textContent = "Finalizar Registro";
+    }
+});
+
+// 📸 HELPER: Transforma imagem tirada pela câmera em String de Texto (Base64)
+function converterParaBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
+
+// 🎬 CONTROLE DO OVERLAY DE SUCESSO
+function exibirJanelaSucesso(mensagem) {
+    msgSucesso.textContent = mensagem;
+    telaSucesso.classList.remove("hidden");
+}
+
+function fecharSucesso() {
+    telaSucesso.classList.add("hidden");
+}
+
+// Inicialização Automática da Aplicação
+document.addEventListener("DOMContentLoaded", () => {
+    atualizarStatusRede();
+    obterParametrosURL();
+});
+    } catch (erro) {
+        console.warn("Falha de rede. Salvando em segundo plano (Modo Offline)...", erro);
