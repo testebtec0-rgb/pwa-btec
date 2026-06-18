@@ -1,5 +1,5 @@
 // CONFIGURAÇÃO: Insira aqui a URL gerada no "Deploy" do seu Google Apps Script
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/SEU_SCRIPT_ID/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhKsHHBVPh_P1jEtNW9efsexqt11bkh4CDQ_VucXSUivftqRC6RNT6hOmQ2UR2S21I/exec";
 
 // Elementos da Interface (DOM)
 const statusRede = document.getElementById("status-rede");
