@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyHl7OHmCLwe-IohUSE8D5KARz1-D2xItkTfsdJB16jbJ8ItnCzPr9W5Va8soxhEOIm/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydoqFJc94CplUUVrgP4daTd8IM4rUz0T3Wdv6TtLXByJR0NGFCc0Y3YMONh6MLo98/exec";
 
 const statusRede = document.getElementById("status-rede");
 const labelPrefixo = document.getElementById("label-prefixo");
