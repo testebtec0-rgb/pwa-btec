@@ -1,7 +1,5 @@
-// CONFIGURAÇÃO: Insira aqui a URL gerada no "Deploy" do seu Google Apps Script
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyHl7OHmCLwe-IohUSE8D5KARz1-D2xItkTfsdJB16jbJ8ItnCzPr9W5Va8soxhEOIm/exec";
 
-// Elementos da Interface (DOM)
 const statusRede = document.getElementById("status-rede");
 const labelPrefixo = document.getElementById("label-prefixo");
 const labelFamilia = document.getElementById("label-familia");
@@ -13,11 +11,9 @@ const formRegistro = document.getElementById("form-registro");
 const telaSucesso = document.getElementById("tela-sucesso");
 const msgSucesso = document.getElementById("msg-sucesso");
 
-// Elementos da Trava de Segurança
 const checkboxAceite = document.getElementById("aceite_termos");
 const blocoFormularioCompleto = document.getElementById("bloco-formulario-completo");
 
-// 🌐 1. MONITOR DE CONEXÃO (ONLINE / OFFLINE)
 function atualizarStatusRede() {
     if (navigator.onLine) {
         statusRede.textContent = "SISTEMA ONLINE (BTEC)";
@@ -30,7 +26,6 @@ function atualizarStatusRede() {
 window.addEventListener("online", atualizarStatusRede);
 window.addEventListener("offline", atualizarStatusRede);
 
-// 🔒 2. GERENCIADOR DA TRAVA DE SEGURANÇA (ABRE/FECHA FORMULÁRIO)
 checkboxAceite.addEventListener("change", function() {
     if (this.checked) {
         blocoFormularioCompleto.classList.remove("hidden");
@@ -40,7 +35,6 @@ checkboxAceite.addEventListener("change", function() {
     }
 });
 
-// 🔍 3. CAPTURAR PARÂMETROS DO QR CODE (URL)
 function obterParametrosURL() {
     const urlParams = new URLSearchParams(window.location.search);
     const prefixo = urlParams.get("prefixo") || "BTEC-GERAL";
@@ -54,7 +48,6 @@ function obterParametrosURL() {
     carregarFormularioDinamico(prefixo, familia);
 }
 
-// 📥 4. REQUISITAR CAMPOS DINÂMICOS DA PLANILHA
 async function carregarFormularioDinamico(prefixo, familia) {
     try {
         atualizarStatusRede();
@@ -75,7 +68,6 @@ async function carregarFormularioDinamico(prefixo, familia) {
     }
 }
 
-// 🏗️ 5. CONSTRUIR OS ELEMENTOS HTML DE FORMA DINÂMICA
 function montarFormularioNaTela(campos) {
     containerCamposDinamicos.innerHTML = "";
 
@@ -97,7 +89,6 @@ function montarFormularioNaTela(campos) {
 
         if (campo.tipo === "select") {
             inputElement = document.createElement("select");
-            
             const optPlaceholder = document.createElement("option");
             optPlaceholder.value = "";
             optPlaceholder.textContent = "Selecione uma opção...";
@@ -131,10 +122,7 @@ function montarFormularioNaTela(campos) {
         inputElement.id = campo.id;
         inputElement.name = campo.id;
         
-        if (campo.obrigatorio) {
-            inputElement.required = true;
-        }
-
+        if (campo.obrigatorio) inputElement.required = true;
         if (campo.valorPadrao && campo.tipo !== "file" && campo.tipo !== "select") {
             inputElement.value = campo.valorPadrao;
         }
@@ -144,7 +132,6 @@ function montarFormularioNaTela(campos) {
     });
 }
 
-// 📤 6. PROCESSAR E ENVIAR O FORMULÁRIO (COM COMPRESSÃO AUTOMÁTICA DE IMAGEM)
 formRegistro.addEventListener("submit", async (e) => {
     e.preventDefault();
     
@@ -163,7 +150,6 @@ formRegistro.addEventListener("submit", async (e) => {
     for (let input of inputs) {
         if (input.type === "file") {
             if (input.files.length > 0) {
-                // Executa a compressão inteligente antes de transformar em string para o banco de dados
                 pacoteRegistro.respostas[input.id] = await converterEComprimirParaBase64(input.files[0]);
             } else {
                 pacoteRegistro.respostas[input.id] = "";
@@ -182,16 +168,12 @@ formRegistro.addEventListener("submit", async (e) => {
         });
 
         exibirJanelaSucesso("O seu checklist foi transmitido diretamente para a central da gerência com sucesso!");
-        
-        // Limpa e tranca o formulário novamente para o próximo turno
         formRegistro.reset();
         blocoFormularioCompleto.classList.add("hidden");
 
     } catch (erro) {
         console.warn("Falha de rede. Salvando localmente...", erro);
-        
         exibirJanelaSucesso("Registro Concluído com Sucesso! Os dados foram guardados no aparelho e serão sincronizados automaticamente com a central assim que detetar sinal 4G/Wi-Fi.");
-        
         formRegistro.reset();
         blocoFormularioCompleto.classList.add("hidden");
     } finally {
@@ -200,7 +182,6 @@ formRegistro.addEventListener("submit", async (e) => {
     }
 });
 
-// 📸 7. HELPER: REDIMENSIONA E COMPRIME FOTOS EM TEMPO REAL (MÁX 1024px @ 70% QUALIDADE)
 function converterEComprimirParaBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -234,7 +215,6 @@ function converterEComprimirParaBase64(file) {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Converte e comprime para JPEG derrubando o peso de MBs para ~120 KB
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
                 resolve(dataUrl);
             };
@@ -243,7 +223,6 @@ function converterEComprimirParaBase64(file) {
     });
 }
 
-// 🎬 8. CONTROLE DO OVERLAY DE SUCESSO
 function exibirJanelaSucesso(mensagem) {
     msgSucesso.textContent = mensagem;
     telaSucesso.classList.remove("hidden");
@@ -253,13 +232,11 @@ function fecharSucesso() {
     telaSucesso.classList.add("hidden");
 }
 
-// Inicialização Automática da Aplicação
 document.addEventListener("DOMContentLoaded", () => {
     atualizarStatusRede();
     obterParametrosURL();
 });
 
-// Registro do Service Worker para suporte Offline
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js');
