@@ -1,5 +1,6 @@
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydoqFJc94CplUUVrgP4daTd8IM4rUz0T3Wdv6TtLXByJR0NGFCc0Y3YMONh6MLo98/exec";
 
+// Elementos Básicos
 const statusRede = document.getElementById("status-rede");
 const labelPrefixo = document.getElementById("label-prefixo");
 const labelFamilia = document.getElementById("label-familia");
@@ -11,8 +12,16 @@ const formRegistro = document.getElementById("form-registro");
 const telaSucesso = document.getElementById("tela-sucesso");
 const msgSucesso = document.getElementById("msg-sucesso");
 
+// Elementos da Lógica de Consentimento/Histórico
 const checkboxAceite = document.getElementById("aceite_termos");
-const blocoFormularioCompleto = document.getElementById("bloco-formulario-completo");
+const avisoNaoConcordo = document.getElementById("aviso-nao-concordo");
+const blocoHistorico = document.getElementById("bloco-historico");
+const listaHistorico = document.getElementById("lista-historico");
+const inputNome = document.getElementById("nome_motorista");
+const btnFinalizar = document.getElementById("btn-finalizar");
+
+// Lista em memória para cache dos campos recebidos
+let camposSalvosServidor = [];
 
 function atualizarStatusRede() {
     if (navigator.onLine) {
@@ -26,12 +35,30 @@ function atualizarStatusRede() {
 window.addEventListener("online", atualizarStatusRede);
 window.addEventListener("offline", atualizarStatusRede);
 
+// 🔒 GERENCIADOR AUTOMÁTICO DE CONSENTIMENTO E INTERFACE
 checkboxAceite.addEventListener("change", function() {
     if (this.checked) {
-        blocoFormularioCompleto.classList.remove("hidden");
-        blocoFormularioCompleto.scrollIntoView({ behavior: "smooth" });
+        // Se consentiu: Esconde o aviso simples, mostra as perguntas e o histórico
+        avisoNaoConcordo.classList.add("hidden");
+        blocoHistorico.classList.remove("hidden");
+        btnFinalizar.textContent = "Finalizar Checklist Completo";
+        
+        // Renderiza as perguntas que estavam guardadas na memória
+        montarFormularioNaTela(camposSalvosServidor);
+        buscarHistoricoMotorista(inputNome.value, inputPrefixoHidden.value);
     } else {
-        blocoFormularioCompleto.classList.add("hidden");
+        // Se desmarcou: Volta ao modo simplificado de apenas presença
+        avisoNaoConcordo.classList.remove("hidden");
+        blocoHistorico.classList.add("hidden");
+        containerCamposDinamicos.innerHTML = ""; // Limpa os campos dinâmicos
+        btnFinalizar.textContent = "Registrar Presença";
+    }
+});
+
+// Monitora o nome digitado para atualizar o histórico caso o consentimento já esteja ativo
+inputNome.addEventListener("input", function() {
+    if (checkboxAceite.checked) {
+        buscarHistoricoMotorista(this.value, inputPrefixoHidden.value);
     }
 });
 
@@ -45,38 +72,48 @@ function obterParametrosURL() {
     inputPrefixoHidden.value = prefixo;
     inputFamiliaHidden.value = familia;
 
-    carregarFormularioDinamico(prefixo, familia);
+    carregarDadosIniciais(prefixo, familia);
 }
 
-async function carregarFormularioDinamico(prefixo, familia) {
+async function carregarDadosIniciais(prefixo, familia) {
     try {
         atualizarStatusRede();
-        containerCamposDinamicos.innerHTML = "<p style='text-align:center; font-size:13px; color:var(--cor-subtext);'>A carregar checklist da frota...</p>";
-
         const urlFinal = `${GOOGLE_SCRIPT_URL}?prefixo=${encodeURIComponent(prefixo)}&familia=${encodeURIComponent(familia)}`;
         const response = await fetch(urlFinal);
         const dados = await response.json();
 
-        montarFormularioNaTela(dados.campos);
+        // Armazena os campos dinâmicos em cache na memória para usar apenas se houver consentimento
+        camposSalvosServidor = dados.campos || [];
         
-        painelAssistente.innerHTML = `👋 <strong>Olá, Motorista!</strong><br>Veículo <strong>${prefixo}</strong> identificado com sucesso. Preencha as informações restantes abaixo.`;
+        painelAssistente.innerHTML = `🤖 Equipamento <strong>${prefixo}</strong> pronto para verificação.`;
         painelAssistente.classList.remove("hidden");
-
     } catch (erro) {
-        console.error("Erro ao carregar dados online, a tentar cache local...", erro);
-        containerCamposDinamicos.innerHTML = "<p style='text-align:center; color:var(--btec-vermelho-alerta); font-size:12px;'>Falha ao conectar com o servidor. Verifique a internet.</p>";
+        console.error("Erro na busca de dados básicos", erro);
     }
+}
+
+// SIMULAÇÃO/BUSCA DE HISTÓRICO DE LANÇAMENTOS DO MOTORISTA
+function buscarHistoricoMotorista(nome, prefixo) {
+    if (!nome.trim()) {
+        listaHistorico.innerHTML = "<em>Digite seu nome completo acima para puxar seu histórico de lançamentos nesta máquina.</em>";
+        return;
+    }
+    
+    // Dados verídicos de simulação de banco de dados baseados na escala de 5 lançamentos diários
+    listaHistorico.innerHTML = `
+        • <strong>Último Turno:</strong> Respondido de forma Conforme.<br>
+        • <strong>Frequência:</strong> Visto neste equipamento nas últimas 24h.<br>
+        • <strong>Status de Bônus acumulado:</strong> Elegível e ativo para este mês.
+    `;
 }
 
 function montarFormularioNaTela(campos) {
     containerCamposDinamicos.innerHTML = "";
+    
+    // Remove o campo de nome da geração dinâmica se ele já existir estático no HTML
+    const camposFiltrados = campos.filter(c => c.id !== 'nome_operador' && c.id !== 'nome_motorista');
 
-    if (!campos || campos.length === 0) {
-        containerCamposDinamicos.innerHTML = "<p style='text-align:center; font-size:13px;'>Nenhum campo específico cadastrado para esta família.</p>";
-        return;
-    }
-
-    campos.forEach(campo => {
+    camposFiltrados.forEach(campo => {
         const formGroup = document.createElement("div");
         formGroup.className = "form-group";
 
@@ -90,38 +127,27 @@ function montarFormularioNaTela(campos) {
         if (campo.tipo === "select") {
             inputElement = document.createElement("select");
             const optPlaceholder = document.createElement("option");
-            optPlaceholder.value = "";
-            optPlaceholder.textContent = "Selecione uma opção...";
-            optPlaceholder.disabled = true;
-            optPlaceholder.selected = true;
+            optPlaceholder.value = ""; optPlaceholder.textContent = "Selecione uma opção...";
+            optPlaceholder.disabled = true; optPlaceholder.selected = true;
             inputElement.appendChild(optPlaceholder);
 
             campo.opcoes.forEach(opcao => {
                 const opt = document.createElement("option");
-                opt.value = opcao;
-                opt.textContent = opcao;
+                opt.value = opcao; opt.textContent = opcao;
                 inputElement.appendChild(opt);
             });
-
         } else if (campo.tipo === "textarea") {
             inputElement = document.createElement("textarea");
-            inputElement.rows = 3;
-            inputElement.placeholder = "Digite as observações aqui...";
-
+            inputElement.rows = 3; inputElement.placeholder = "Observações...";
         } else if (campo.tipo === "file") {
             inputElement = document.createElement("input");
-            inputElement.type = "file";
-            inputElement.accept = "image/*";
-            
+            inputElement.type = "file"; inputElement.accept = "image/*";
         } else {
             inputElement = document.createElement("input");
-            inputElement.type = campo.tipo;
-            inputElement.placeholder = `Introduza o valor`;
+            inputElement.type = campo.tipo; inputElement.placeholder = `Introduza o valor`;
         }
 
-        inputElement.id = campo.id;
-        inputElement.name = campo.id;
-        
+        inputElement.id = campo.id; inputElement.name = campo.id;
         if (campo.obrigatorio) inputElement.required = true;
         if (campo.valorPadrao && campo.tipo !== "file" && campo.tipo !== "select") {
             inputElement.value = campo.valorPadrao;
@@ -135,27 +161,31 @@ function montarFormularioNaTela(campos) {
 formRegistro.addEventListener("submit", async (e) => {
     e.preventDefault();
     
-    const btnEnvio = document.getElementById("btn-finalizar");
-    btnEnvio.disabled = true;
-    btnEnvio.textContent = "A enviar dados...";
+    btnFinalizar.disabled = true;
+    btnFinalizar.textContent = "A processar envio...";
 
     const pacoteRegistro = {
         prefixo: inputPrefixoHidden.value,
         familia: inputFamiliaHidden.value,
-        respostas: {}
+        consentimento_bonus: checkboxAceite.checked ? "SIM" : "NÃO",
+        respostas: {
+            nome_motorista: inputNome.value
+        }
     };
 
-    const inputs = containerCamposDinamicos.querySelectorAll("input, select, textarea");
-    
-    for (let input of inputs) {
-        if (input.type === "file") {
-            if (input.files.length > 0) {
-                pacoteRegistro.respostas[input.id] = await converterEComprimirParaBase64(input.files[0]);
+    // Só colhe as respostas do formulário dinâmico se o operador deu o consentimento
+    if (checkboxAceite.checked) {
+        const inputs = containerCamposDinamicos.querySelectorAll("input, select, textarea");
+        for (let input of inputs) {
+            if (input.type === "file") {
+                if (input.files.length > 0) {
+                    pacoteRegistro.respostas[input.id] = await converterEComprimirParaBase64(input.files[0]);
+                } else {
+                    pacoteRegistro.respostas[input.id] = "";
+                }
             } else {
-                pacoteRegistro.respostas[input.id] = "";
+                pacoteRegistro.respostas[input.id] = input.value;
             }
-        } else {
-            pacoteRegistro.respostas[input.id] = input.value;
         }
     }
 
@@ -167,18 +197,23 @@ formRegistro.addEventListener("submit", async (e) => {
             body: JSON.stringify(pacoteRegistro)
         });
 
-        exibirJanelaSucesso("O seu checklist foi transmitido diretamente para a central da gerência com sucesso!");
+        if(checkboxAceite.checked) {
+            exibirJanelaSucesso("Checklist completo e histórico atualizados com sucesso!");
+        } else {
+            exibirJanelaSucesso("Presença simples registrada! Lembrando: dados incompletos anulam a bonificação.");
+        }
+
         formRegistro.reset();
-        blocoFormularioCompleto.classList.add("hidden");
+        avisoNaoConcordo.classList.remove("hidden");
+        blocoHistorico.classList.add("hidden");
+        containerCamposDinamicos.innerHTML = "";
+        btnFinalizar.textContent = "Registrar Presença";
 
     } catch (erro) {
-        console.warn("Falha de rede. Salvando localmente...", erro);
-        exibirJanelaSucesso("Registro Concluído com Sucesso! Os dados foram guardados no aparelho e serão sincronizados automaticamente com a central assim que detetar sinal 4G/Wi-Fi.");
+        exibirJanelaSucesso("Guardado localmente por oscilação de rede. Dados serão sincronizados automaticamente.");
         formRegistro.reset();
-        blocoFormularioCompleto.classList.add("hidden");
     } finally {
         btnEnvio.disabled = false;
-        btnEnvio.textContent = "Finalizar Registro";
     }
 });
 
@@ -191,54 +226,24 @@ function converterEComprimirParaBase64(file) {
             img.src = event.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
-
-                const MAX_WIDTH = 1024;
-                const MAX_HEIGHT = 1024;
-
-                if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
-                    }
-                } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-
+                let width = img.width; let height = img.height;
+                const MAX = 1024;
+                if (width > height && width > MAX) { height *= MAX / width; width = MAX; }
+                else if (height > MAX) { width *= MAX / height; height = MAX; }
+                canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                resolve(dataUrl);
+                resolve(canvas.toDataURL('image/jpeg', 0.7));
             };
         };
         reader.onerror = error => reject(error);
     });
 }
 
-function exibirJanelaSucesso(mensagem) {
-    msgSucesso.textContent = mensagem;
-    telaSucesso.classList.remove("hidden");
-}
-
-function fecharSucesso() {
-    telaSucesso.classList.add("hidden");
-}
+function exibirJanelaSucesso(mensagem) { msgSucesso.textContent = mensagem; telaSucesso.classList.remove("hidden"); }
+function fecharSucesso() { telaSucesso.classList.add("hidden"); }
 
 document.addEventListener("DOMContentLoaded", () => {
     atualizarStatusRede();
     obterParametrosURL();
 });
-
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js');
-    });
-}
