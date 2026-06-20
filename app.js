@@ -1,6 +1,5 @@
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydoqFJc94CplUUVrgP4daTd8IM4rUz0T3Wdv6TtLXByJR0NGFCc0Y3YMONh6MLo98/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwCuSg7QuzCwGnG42TGSrtcVl14lSaq_X5WEzOt4Fv93L7EgS13rah9MZyQp0wsJ564/exec";
 
-// Elementos Básicos
 const statusRede = document.getElementById("status-rede");
 const labelPrefixo = document.getElementById("label-prefixo");
 const labelFamilia = document.getElementById("label-familia");
@@ -12,7 +11,6 @@ const formRegistro = document.getElementById("form-registro");
 const telaSucesso = document.getElementById("tela-sucesso");
 const msgSucesso = document.getElementById("msg-sucesso");
 
-// Elementos da Lógica de Consentimento/Histórico
 const checkboxAceite = document.getElementById("aceite_termos");
 const avisoNaoConcordo = document.getElementById("aviso-nao-concordo");
 const blocoHistorico = document.getElementById("bloco-historico");
@@ -20,55 +18,51 @@ const listaHistorico = document.getElementById("lista-historico");
 const inputNome = document.getElementById("nome_motorista");
 const btnFinalizar = document.getElementById("btn-finalizar");
 
-// Lista em memória para cache dos campos recebidos
 let camposSalvosServidor = [];
 
 function atualizarStatusRede() {
     if (navigator.onLine) {
         statusRede.textContent = "SISTEMA ONLINE (BTEC)";
-        statusRede.className = "online";
+        statusRede.style.background = "#2e7d32";
     } else {
         statusRede.textContent = "SISTEMA OFFLINE (MODO CACHE)";
-        statusRede.className = "offline";
+        statusRede.style.background = "#c62828";
     }
 }
 window.addEventListener("online", atualizarStatusRede);
 window.addEventListener("offline", atualizarStatusRede);
 
-// 🔒 GERENCIADOR AUTOMÁTICO DE CONSENTIMENTO E INTERFACE
 checkboxAceite.addEventListener("change", function() {
     if (this.checked) {
-        // Se consentiu: Esconde o aviso simples, mostra as perguntas e o histórico
-        avisoNaoConcordo.classList.add("hidden");
-        blocoHistorico.classList.remove("hidden");
+        avisoNaoConcordo.style.display = "none";
+        blocoHistorico.style.display = "block";
         btnFinalizar.textContent = "Finalizar Checklist Completo";
+        btnFinalizar.style.background = "#4caf50";
         
-        // Renderiza as perguntas que estavam guardadas na memória
         montarFormularioNaTela(camposSalvosServidor);
-        buscarHistoricoMotorista(inputNome.value, inputPrefixoHidden.value);
+        buscarHistoricoMotorista(inputNome.value);
     } else {
-        // Se desmarcou: Volta ao modo simplificado de apenas presença
-        avisoNaoConcordo.classList.remove("hidden");
-        blocoHistorico.classList.add("hidden");
-        containerCamposDinamicos.innerHTML = ""; // Limpa os campos dinâmicos
+        avisoNaoConcordo.style.display = "block";
+        blocoHistorico.style.display = "none";
+        containerCamposDinamicos.innerHTML = "";
         btnFinalizar.textContent = "Registrar Presença";
+        btnFinalizar.style.background = "#2196f3";
     }
 });
 
-// Monitora o nome digitado para atualizar o histórico caso o consentimento já esteja ativo
 inputNome.addEventListener("input", function() {
     if (checkboxAceite.checked) {
-        buscarHistoricoMotorista(this.value, inputPrefixoHidden.value);
+        buscarHistoricoMotorista(this.value);
     }
 });
 
 function obterParametrosURL() {
     const urlParams = new URLSearchParams(window.location.search);
     const prefixo = urlParams.get("prefixo") || "BTEC-GERAL";
-    const familia = urlParams.get("familia") || "TRANSPORTE";
+    const familia = urlParams.get("familia") || "";
 
     labelPrefixo.textContent = prefixo.toUpperCase();
-    labelFamilia.textContent = familia.toUpperCase();
+    labelFamilia.textContent = familia.toUpperCase() || "GERAL";
     inputPrefixoHidden.value = prefixo;
     inputFamiliaHidden.value = familia;
 
@@ -79,56 +73,54 @@ async function carregarDadosIniciais(prefixo, familia) {
     try {
         atualizarStatusRede();
         const urlFinal = `${GOOGLE_SCRIPT_URL}?prefixo=${encodeURIComponent(prefixo)}&familia=${encodeURIComponent(familia)}`;
+        
+        painelAssistente.innerHTML = `⏳ Conectando à central BTEC...`;
+
         const response = await fetch(urlFinal);
+        if (!response.ok) throw new Error();
         const dados = await response.json();
 
-        // Armazena os campos dinâmicos em cache na memória para usar apenas se houver consentimento
         camposSalvosServidor = dados.campos || [];
-        
-        painelAssistente.innerHTML = `🤖 Equipamento <strong>${prefixo}</strong> pronto para verificação.`;
-        painelAssistente.classList.remove("hidden");
+        painelAssistente.innerHTML = `🤖 Equipamento <strong>${prefixo}</strong> pronto. Digite seu nome para continuar.`;
     } catch (erro) {
-        console.error("Erro na busca de dados básicos", erro);
+        painelAssistente.innerHTML = `❌ <strong>Erro:</strong> Verifique a URL do Script ou permissões.`;
     }
 }
 
-// SIMULAÇÃO/BUSCA DE HISTÓRICO DE LANÇAMENTOS DO MOTORISTA
-function buscarHistoricoMotorista(nome, prefixo) {
+function buscarHistoricoMotorista(nome) {
     if (!nome.trim()) {
-        listaHistorico.innerHTML = "<em>Digite seu nome completo acima para puxar seu histórico de lançamentos nesta máquina.</em>";
+        listaHistorico.innerHTML = "<em>Digite seu nome completo acima para puxar o histórico.</em>";
         return;
     }
-    
-    // Dados verídicos de simulação de banco de dados baseados na escala de 5 lançamentos diários
     listaHistorico.innerHTML = `
-        • <strong>Último Turno:</strong> Respondido de forma Conforme.<br>
-        • <strong>Frequência:</strong> Visto neste equipamento nas últimas 24h.<br>
-        • <strong>Status de Bônus acumulado:</strong> Elegível e ativo para este mês.
+        • <strong>Último Turno:</strong> Respondido em Conformidade.<br>
+        • <strong>Frequência:</strong> Operou este equipamento recentemente.<br>
+        • <strong>Status de Bônus:</strong> Elegível e ativo para este período.
     `;
 }
 
 function montarFormularioNaTela(campos) {
     containerCamposDinamicos.innerHTML = "";
     
-    // Remove o campo de nome da geração dinâmica se ele já existir estático no HTML
-    const camposFiltrados = campos.filter(c => c.id !== 'nome_operador' && c.id !== 'nome_motorista');
-
-    camposFiltrados.forEach(campo => {
+    campos.forEach(campo => {
         const formGroup = document.createElement("div");
-        formGroup.className = "form-group";
+        formGroup.style.marginBottom = "15px";
 
         const label = document.createElement("label");
-        label.setAttribute("for", campo.id);
-        label.innerHTML = campo.obrigatorio ? `${campo.label} <span style="color:var(--btec-vermelho-alerta)">*</span>` : campo.label;
+        label.style.display = "block";
+        label.style.marginBottom = "5px";
+        label.style.fontWeight = "bold";
+        label.style.fontSize = "14px";
+        label.innerHTML = campo.obrigatorio ? `${campo.label} <span style="color:#ff4444">*</span>` : campo.label;
         formGroup.appendChild(label);
 
         let inputElement;
 
         if (campo.tipo === "select") {
             inputElement = document.createElement("select");
+            inputElement.style.width = "100%"; inputElement.style.padding = "10px"; inputElement.style.background = "#222"; inputElement.style.color = "#fff"; inputElement.style.borderRadius = "6px";
             const optPlaceholder = document.createElement("option");
-            optPlaceholder.value = ""; optPlaceholder.textContent = "Selecione uma opção...";
-            optPlaceholder.disabled = true; optPlaceholder.selected = true;
+            optPlaceholder.value = ""; optPlaceholder.textContent = "Selecione..."; optPlaceholder.disabled = true; optPlaceholder.selected = true;
             inputElement.appendChild(optPlaceholder);
 
             campo.opcoes.forEach(opcao => {
@@ -138,21 +130,17 @@ function montarFormularioNaTela(campos) {
             });
         } else if (campo.tipo === "textarea") {
             inputElement = document.createElement("textarea");
-            inputElement.rows = 3; inputElement.placeholder = "Observações...";
+            inputElement.rows = 3; inputElement.style.width = "100%"; inputElement.style.background = "#222"; inputElement.style.color = "#fff"; inputElement.style.borderRadius = "6px";
         } else if (campo.tipo === "file") {
             inputElement = document.createElement("input");
             inputElement.type = "file"; inputElement.accept = "image/*";
         } else {
             inputElement = document.createElement("input");
-            inputElement.type = campo.tipo; inputElement.placeholder = `Introduza o valor`;
+            inputElement.type = campo.tipo; inputElement.style.width = "100%"; inputElement.style.padding = "10px"; inputElement.style.background = "#222"; inputElement.style.color = "#fff"; inputElement.style.borderRadius = "6px"; inputElement.style.boxSizing = "border-box";
         }
 
         inputElement.id = campo.id; inputElement.name = campo.id;
         if (campo.obrigatorio) inputElement.required = true;
-        if (campo.valorPadrao && campo.tipo !== "file" && campo.tipo !== "select") {
-            inputElement.value = campo.valorPadrao;
-        }
-
         formGroup.appendChild(inputElement);
         containerCamposDinamicos.appendChild(formGroup);
     });
@@ -162,24 +150,21 @@ formRegistro.addEventListener("submit", async (e) => {
     e.preventDefault();
     
     btnFinalizar.disabled = true;
-    btnFinalizar.textContent = "A processar envio...";
+    btnFinalizar.textContent = "Enviando dados...";
 
     const pacoteRegistro = {
         prefixo: inputPrefixoHidden.value,
         familia: inputFamiliaHidden.value,
         consentimento_bonus: checkboxAceite.checked ? "SIM" : "NÃO",
-        respostas: {
-            nome_motorista: inputNome.value
-        }
+        respostas: { nome_motorista: inputNome.value }
     };
 
-    // Só colhe as respostas do formulário dinâmico se o operador deu o consentimento
     if (checkboxAceite.checked) {
         const inputs = containerCamposDinamicos.querySelectorAll("input, select, textarea");
         for (let input of inputs) {
             if (input.type === "file") {
                 if (input.files.length > 0) {
-                    pacoteRegistro.respostas[input.id] = await converterEComprimirParaBase64(input.files[0]);
+                    pacoteRegistro.respostas[input.id] = await converterParaBase64(input.files[0]);
                 } else {
                     pacoteRegistro.respostas[input.id] = "";
                 }
@@ -197,27 +182,22 @@ formRegistro.addEventListener("submit", async (e) => {
             body: JSON.stringify(pacoteRegistro)
         });
 
-        if(checkboxAceite.checked) {
-            exibirJanelaSucesso("Checklist completo e histórico atualizados com sucesso!");
-        } else {
-            exibirJanelaSucesso("Presença simples registrada! Lembrando: dados incompletos anulam a bonificação.");
-        }
-
+        exibirJanelaSucesso(checkboxAceite.checked ? "Checklist enviado com sucesso!" : "Presença registrada! Lembrete: dados incompletos anulam o bônus.");
         formRegistro.reset();
-        avisoNaoConcordo.classList.remove("hidden");
-        blocoHistorico.classList.add("hidden");
+        checkboxAceite.checked = false;
+        avisoNaoConcordo.style.display = "block";
+        blocoHistorico.style.display = "none";
         containerCamposDinamicos.innerHTML = "";
         btnFinalizar.textContent = "Registrar Presença";
-
+        btnFinalizar.style.background = "#2196f3";
     } catch (erro) {
-        exibirJanelaSucesso("Guardado localmente por oscilação de rede. Dados serão sincronizados automaticamente.");
-        formRegistro.reset();
+        exibirJanelaSucesso("Erro na rede. Registro armazenado localmente.");
     } finally {
-        btnEnvio.disabled = false;
+        btnFinalizar.disabled = false;
     }
 });
 
-function converterEComprimirParaBase64(file) {
+function converterParaBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -236,14 +216,12 @@ function converterEComprimirParaBase64(file) {
                 resolve(canvas.toDataURL('image/jpeg', 0.7));
             };
         };
-        reader.onerror = error => reject(error);
     });
 }
 
-function exibirJanelaSucesso(mensagem) { msgSucesso.textContent = mensagem; telaSucesso.classList.remove("hidden"); }
-function fecharSucesso() { telaSucesso.classList.add("hidden"); }
+function exibirJanelaSucesso(msg) { msgSucesso.textContent = msg; telaSucesso.style.display = "flex"; }
+function fecharSucesso() { telaSucesso.style.display = "none"; }
 
 document.addEventListener("DOMContentLoaded", () => {
-    atualizarStatusRede();
     obterParametrosURL();
 });
