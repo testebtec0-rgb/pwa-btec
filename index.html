@@ -11,61 +11,61 @@
 
     <div class="container">
         <div class="marca-header">
-            <img src="images.png" alt="BTEC Construções" class="marca-logo">
-            <div class="aviso-obrigatorio">
+            <img src="images.png" alt="BTEC Construções" class="marca-logo" style="max-width: 150px; margin: 10px auto; display: block;">
+            <div class="aviso-obrigatorio" style="background: rgba(255, 193, 7, 0.1); border: 1px solid #ffc107; padding: 10px; border-radius: 6px; font-size: 12px; margin-bottom: 15px; color: #ffc107;">
                 <strong>⚠️ ATENÇÃO OPERADOR / MOTORISTA ⚠️</strong><br>
-                O preenchimento deste formulário digital <strong>NÃO substitui</strong> a entrega da <strong>Parte Diária em Papel</strong> e do <strong>Checklist Diário</strong>. Ambos devem ser corretamente preenchidos e entregues em suas respectivas datas.
+              O preenchimento deste formulário digital <strong>NÃO substitui</strong> a entrega da <strong>Parte Diária em Papel</strong> e do <strong>Checklist Diário</strong>. Ambos devem ser corretamente preenchidos e entregues em suas respectivas datas.
             </div>
         </div>
 
-        <div style="text-align: center;">
-            <div id="status-rede" class="online">Verificando Conexão...</div>
+        <div style="text-align: center; margin-bottom: 15px;">
+            <div id="status-rede" class="online" style="padding: 5px 10px; display: inline-block; border-radius: 20px; font-size: 11px; font-weight: bold;">Verificando Conexão...</div>
         </div>
 
         <form id="form-registro">
-            <div class="qr-info">
-                <div><p>Prefixo Equipamento</p><strong id="label-prefixo">-</strong></div>
-                <div><p>Família Frota</p><strong id="label-familia">-</strong></div>
+            <div class="qr-info" style="display: flex; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; gap: 10px;">
+                <div><p style="margin:0; font-size:11px; color:#888;">Prefixo Equipamento</p><strong id="label-prefixo" style="font-size:18px; color:#fff;">-</strong></div>
+                <div style="text-align: right;"><p style="margin:0; font-size:11px; color:#888;">Família Frota</p><strong id="label-familia" style="font-size:14px; color:#ffc107;">-</strong></div>
                 <input type="hidden" id="prefixo">
                 <input type="hidden" id="familia">
             </div>
 
-            <div class="form-group">
-                <label for="nome_motorista">Nome Completo do Motorista <span style="color:var(--btec-vermelho-alerta)">*</span></label>
-                <input type="text" id="nome_motorista" required placeholder="Digite seu nome completo">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label for="nome_motorista" style="display:block; margin-bottom:5px; font-weight:bold;">Nome Completo do Motorista <span style="color:#ff4444">*</span></label>
+                <input type="text" id="nome_motorista" required placeholder="Digite seu nome completo" style="width:100%; padding:10px; border-radius:6px; border:1px solid #444; background:#222; color:#fff; box-sizing: border-box;">
             </div>
 
-            <div class="form-group" style="background: rgba(255,255,255,0.05); padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);">
-                <label style="display: flex; align-items: flex-start; gap: 12px; text-transform: none; font-weight: normal; font-size: 12px; color: #e0e6ed; cursor: pointer;">
-                    <input type="checkbox" id="aceite_termos" style="width: 22px; height: 22px; margin: 0; cursor: pointer; flex-shrink: 0;">
+            <div class="form-group" style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 15px;">
+                <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; font-size: 12px; color: #e0e6ed;">
+                    <input type="checkbox" id="aceite_termos" style="width: 22px; height: 22px; margin: 0; flex-shrink: 0; cursor: pointer;">
                     <span><strong>CONCORDAR COM OS TERMOS:</strong> Declaro que as informações enviadas serão verídicas. Estou ciente de que dados inconsistentes ou a falta de preenchimento implicam na <strong>perda integral da bonificação mensal</strong>.</span>
                 </label>
             </div>
 
-            <div id="aviso-nao-concordo" class="card-assistente" style="border-left-color: var(--btec-vermelho-alerta); margin-top: 10px;">
+            <div id="aviso-nao-concordo" style="border-left: 4px solid #ff4444; background: rgba(255, 68, 68, 0.05); padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 12px; color: #ff8888;">
                 ℹ️ <strong>Nota:</strong> Caso não concorde com os termos acima, insira apenas o seu nome completo no campo acima e clique no botão enviar logo abaixo para registrar seu turno.
             </div>
 
-            <div id="painel-assistente-motorista" class="card-assistente hidden"></div>
+            <div id="painel-assistente-motorista" style="background: rgba(33, 150, 243, 0.05); border-left: 4px solid #2196f3; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 12px; color: #90caf9;"></div>
 
-            <div id="bloco-historico" class="hidden" style="margin-bottom: 20px; background: rgba(0, 230, 118, 0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(0, 230, 118, 0.2);">
-                <h4 style="font-size: 12px; text-transform: uppercase; color: var(--cor-sucesso); margin-bottom: 8px;">📋 Seu Histórico Recente nesta Máquina</h4>
-                <div id="lista-historico" style="font-size: 11px; color: var(--cor-subtext); line-height: 1.4;">
+            <div id="bloco-historico" style="display:none; margin-bottom: 20px; background: rgba(76, 175, 80, 0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(76, 175, 80, 0.2);">
+                <h4 style="font-size: 12px; text-transform: uppercase; color: #81c784; margin: 0 0 8px 0;">📋 Seu Histórico Recente nesta Máquina</h4>
+                <div id="lista-historico" style="font-size: 11px; color: #b0bec5; line-height: 1.4;">
                     Buscando lançamentos anteriores...
                 </div>
             </div>
 
             <div id="campos-dinamicos"></div>
 
-            <button type="submit" id="btn-finalizar" style="margin-top: 15px;">Registrar Presença</button>
+            <button type="submit" id="btn-finalizar" style="width: 100%; padding: 14px; background: #2196f3; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 15px;">Registrar Presença</button>
         </form>
 
-        <div id="tela-sucesso" class="hidden">
-            <div class="sucesso-card">
-                <div class="icon-check">✓</div>
-                <h3>Registro Salvo</h3>
-                <p id="msg-sucesso"></p>
-                <button onclick="fecharSucesso()">Avançar</button>
+        <div id="tela-sucesso" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 9999;">
+            <div style="background: #222; padding: 30px; border-radius: 12px; text-align: center; max-width: 85%; border: 1px solid #444;">
+                <div style="width: 60px; height: 60px; background: #4caf50; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 15px auto; color: white; font-size: 30px; font-weight: bold;">✓</div>
+                <h3 style="color: white; margin-bottom: 10px;">Registro Salvo</h3>
+                <p id="msg-sucesso" style="color: #bbb; font-size: 13px; margin-bottom: 20px;"></p>
+                <button onclick="fecharSucesso()" style="padding: 10px 25px; background: #4caf50; border: none; color: white; border-radius: 4px; font-weight: bold; cursor: pointer;">Avançar</button>
             </div>
         </div>
     </div>
