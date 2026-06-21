@@ -1,58 +1,33 @@
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwCuSg7QuzCwGnG42TGSrtcVl14lSaq_X5WEzOt4Fv93L7EgS13rah9MZyQp0wsJ564/exec";
 
-const statusRede = document.getElementById("status-rede");
-const labelPrefixo = document.getElementById("label-prefixo");
-const labelFamilia = document.getElementById("label-familia");
-const inputPrefixoHidden = document.getElementById("prefixo");
-const inputFamiliaHidden = document.getElementById("familia");
-const painelAssistente = document.getElementById("painel-assistente-motorista");
-const containerCamposDinamicos = document.getElementById("campos-dinamicos");
-const formRegistro = document.getElementById("form-registro");
-const telaSucesso = document.getElementById("tela-sucesso");
-const msgSucesso = document.getElementById("msg-sucesso");
-
-const checkboxAceite = document.getElementById("aceite_termos");
-const avisoNaoConcordo = document.getElementById("aviso-nao-concordo");
-const inputNome = document.getElementById("nome_motorista");
-const btnFinalizar = document.getElementById("btn-finalizar");
+// Captura de Elementos da Interface
+const labelPrefixo = document.getElementById("txt-prefixo");
+const labelFamilia = document.getElementById("txt-familia");
+const painelAssistente = document.getElementById("assistente-ia");
+const containerDinamico = document.getElementById("container-campos-dinamicos");
+const barraRede = document.getElementById("status-rede");
+const formulario = document.getElementById("form-registro");
 
 let camposSalvosServidor = [];
-
-function atualizarStatusRede() {
-    if (navigator.onLine) {
-        statusRede.textContent = "SISTEMA ONLINE (BTEC)";
-        statusRede.className = "online";
-    } else {
-        statusRede.textContent = "SISTEMA OFFLINE (MODO CACHE)";
-        statusRede.className = "offline";
-    }
-}
-window.addEventListener("online", atualizarStatusRede);
-window.addEventListener("offline", atualizarStatusRede);
-
-checkboxAceite.addEventListener("change", function() {
-    if (this.checked) {
-        avisoNaoConcordo.classList.add("hidden");
-        btnFinalizar.textContent = "Finalizar Checklist Completo";
-        montarFormularioNaTela(camposSalvosServidor);
-    } else {
-        avisoNaoConcordo.classList.remove("hidden");
-        containerCamposDinamicos.innerHTML = "";
-        btnFinalizar.textContent = "Registrar Presença";
-    }
-});
+let paramsGlobais = { prefixo: "BTEC-GERAL", familia: "GERAL" };
 
 function obterParametrosURL() {
     const urlParams = new URLSearchParams(window.location.search);
-    const prefixo = urlParams.get("prefixo") || "BTEC-GERAL";
-    const familia = urlParams.get("familia") || "";
+    paramsGlobais.prefixo = urlParams.get("prefixo") || "BTEC-GERAL";
+    paramsGlobais.familia = urlParams.get("familia") || "GERAL";
+    
+    labelPrefixo.textContent = paramsGlobais.prefixo.toUpperCase();
+    labelFamilia.textContent = paramsGlobais.familia.toUpperCase();
+}
 
-    labelPrefixo.textContent = prefixo.toUpperCase();
-    labelFamilia.textContent = familia.toUpperCase() || "GERAL";
-    inputPrefixoHidden.value = prefixo;
-    inputFamiliaHidden.value = familia;
-
-    carregarDadosIniciais(prefixo, familia);
+function atualizarStatusRede() {
+    if (navigator.onLine) {
+        barraRede.textContent = "SISTEMA ONLINE (BTEC)";
+        barraRede.className = "status-barra-rede online";
+    } else {
+        barraRede.textContent = "MODO OFFLINE - DADOS EM CACHE";
+        barraRede.className = "status-barra-rede offline";
+    }
 }
 
 async function carregarDadosIniciais(prefixo, familia) {
@@ -60,147 +35,161 @@ async function carregarDadosIniciais(prefixo, familia) {
         atualizarStatusRede();
         const urlFinal = `${GOOGLE_SCRIPT_URL}?prefixo=${encodeURIComponent(prefixo)}&familia=${encodeURIComponent(familia)}`;
         
-        painelAssistente.innerHTML = `⏳ Conectando à central BTEC...`;
+        painelAssistente.innerHTML = `⏳ Sincronizando dados patrimoniais...`;
 
         const response = await fetch(urlFinal);
         if (!response.ok) throw new Error();
         const dados = await response.json();
 
         camposSalvosServidor = dados.campos || [];
-        painelAssistente.innerHTML = `🤖 Equipamento <strong>${prefixo}</strong> pronto. Insira seu nome completo e assinale os termos de consentimento para liberar o checklist.`;
+        
+        // 🆕 INJEÇÃO COMPACTA E ELEGANTE DE MÚLTIPLAS INFORMAÇÕES ADICIONAIS
+        if (dados.descricao && dados.descricao.trim() !== "") {
+            labelPrefixo.innerHTML = `
+                ${prefixo.toUpperCase()}
+                <span style="display:block; font-size:10px; font-weight:normal; color:#94a3b8; margin-top:5px; text-transform:none; line-height:1.4; white-space:normal; font-style:italic;">
+                    ${dados.descricao}
+                </span>
+            `;
+        }
+
+        // Sistema Inteligente de Alerta de Turno
+        if (dados.jaRegistradoHoje) {
+            painelAssistente.style.borderLeft = "4px solid #2196f3";
+            painelAssistente.innerHTML = `🤖 Equipamento <strong>${prefixo}</strong> já realizou a inspeção matinal hoje. Os campos flexíveis foram configurados como <strong>opcionais</strong> para este turno.`;
+        } else {
+            painelAssistente.style.borderLeft = "4px solid #00e676";
+            painelAssistente.innerHTML = `🤖 Primeiro registro do dia para o equipamento <strong>${prefixo}</strong>. O preenchimento dos campos com <span style="color:#ff4a4a">*</span> é <strong>obrigatório</strong>.`;
+        }
+
+        montarFormularioDinamico(camposSalvosServidor);
+        
     } catch (erro) {
-        painelAssistente.innerHTML = `❌ <strong>Erro:</strong> Não foi possível sincronizar os dados da central.`;
+        painelAssistente.style.borderLeft = "4px solid #ff4a4a";
+        painelAssistente.innerHTML = `❌ <strong>Erro de Link:</strong> Não foi possível sincronizar os dados com a planilha BTEC.`;
     }
 }
 
-function montarFormularioNaTela(campos) {
-    containerCamposDinamicos.innerHTML = "";
+function montarFormularioDinamico(campos) {
+    containerDinamico.innerHTML = "";
     
     campos.forEach(campo => {
-        const formGroup = document.createElement("div");
-        formGroup.className = "form-group";
+        const divCampo = document.createElement("div");
+        divCampo.className = "campo-base";
 
         const label = document.createElement("label");
-        label.htmlFor = campo.id;
-        label.innerHTML = campo.obrigatorio ? `${campo.label} *` : campo.label;
-        formGroup.appendChild(label);
+        label.innerHTML = `${campo.label} ${campo.obrigatorio ? '<span style="color:#ff4a4a">*</span>' : ''}`;
+        divCampo.appendChild(label);
 
         let inputElement;
 
         if (campo.tipo === "select") {
             inputElement = document.createElement("select");
-            const optPlaceholder = document.createElement("option");
-            optPlaceholder.value = ""; optPlaceholder.textContent = "Selecione..."; optPlaceholder.disabled = true; optPlaceholder.selected = true;
-            inputElement.appendChild(optPlaceholder);
+            const opPadrao = document.createElement("option");
+            opPadrao.value = "";
+            opPadrao.textContent = "Selecione uma opção...";
+            inputElement.appendChild(opPadrao);
 
-            campo.opcoes.forEach(opcao => {
-                const opt = document.createElement("option");
-                opt.value = opcao; opt.textContent = opcao;
-                inputElement.appendChild(opt);
+            campo.opcoes.forEach(op => {
+                const option = document.createElement("option");
+                option.value = op;
+                option.textContent = op;
+                inputElement.appendChild(option);
             });
-        } else if (campo.tipo === "textarea") {
-            inputElement = document.createElement("textarea");
-            inputElement.rows = 3;
-            inputElement.placeholder = "Digite as observações...";
+        } else if (campo.tipo === "number") {
+            inputElement = document.createElement("input");
+            inputElement.type = "number";
+            inputElement.inputMode = "numeric";
+            inputElement.placeholder = "Digite valores numéricos";
         } else if (campo.tipo === "file") {
             inputElement = document.createElement("input");
-            inputElement.type = "file"; 
+            inputElement.type = "file";
             inputElement.accept = "image/*";
+            inputElement.capture = "environment";
         } else {
             inputElement = document.createElement("input");
-            inputElement.type = campo.tipo;
-            inputElement.placeholder = `Preencha o campo...`;
+            inputElement.type = "text";
+            inputElement.placeholder = "Digite a resposta";
         }
 
-        inputElement.id = campo.id; 
-        inputElement.name = campo.id;
-        if (campo.obrigatorio) inputElement.required = true;
-        
-        formGroup.appendChild(inputElement);
-        containerCamposDinamicos.appendChild(formGroup);
+        inputElement.id = `dinamico-${campo.id}`;
+        inputElement.required = campo.obrigatorio;
+        divCampo.appendChild(inputElement);
+        containerDinamico.appendChild(divCampo);
     });
 }
 
-formRegistro.addEventListener("submit", async (e) => {
+// Envio do Formulário
+formulario.addEventListener("submit", async (e) => {
     e.preventDefault();
     
-    btnFinalizar.disabled = true;
-    const textoOriginalBtn = btnFinalizar.textContent;
-    btnFinalizar.textContent = "Enviando dados...";
+    const btn = document.getElementById("btn-enviar");
+    btn.disabled = true;
+    btn.textContent = "ENVIANDO AO SERVIDOR...";
 
-    const pacoteRegistro = {
-        prefixo: inputPrefixoHidden.value,
-        familia: inputFamiliaHidden.value,
-        consentimento_bonus: checkboxAceite.checked ? "SIM" : "NÃO",
-        respostas: { nome_motorista: inputNome.value }
+    const payload = {
+        prefixo: paramsGlobais.prefixo,
+        familia: paramsGlobais.familia,
+        consentimento_bonus: document.getElementById("chk-termos").checked ? "SIM" : "NÃO",
+        respostas: {
+            nome_operador: document.getElementById("nome-motorista").value
+        }
     };
 
-    if (checkboxAceite.checked) {
-        const inputs = containerCamposDinamicos.querySelectorAll("input, select, textarea");
-        for (let input of inputs) {
-            if (input.type === "file") {
-                if (input.files.length > 0) {
-                    pacoteRegistro.respostas[input.id] = await converterParaBase64(input.files[0]);
-                } else {
-                    pacoteRegistro.respostas[input.id] = "";
-                }
+    camposSalvosServidor.forEach(campo => {
+        const el = document.getElementById(`dinamico-${campo.id}`);
+        if (el) {
+            if (campo.tipo === "file") {
+                payload.respostas[campo.id] = el.files[0] ? `Arquivo anexado: ${el.files[0].name}` : "Nenhum arquivo enviado";
             } else {
-                pacoteRegistro.respostas[input.id] = input.value;
+                payload.respostas[campo.id] = el.value;
             }
         }
-    }
+    });
 
     try {
-        await fetch(GOOGLE_SCRIPT_URL, {
+        const res = await fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
             mode: "no-cors",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(pacoteRegistro)
+            body: JSON.stringify(payload)
         });
 
-        exibirJanelaSucesso(checkboxAceite.checked ? "Checklist enviado com sucesso!" : "Presença registrada! Lembrete: dados incompletos anulam o bônus.");
-        formRegistro.reset();
-        checkboxAceite.checked = false;
-        avisoNaoConcordo.classList.remove("hidden");
-        containerCamposDinamicos.innerHTML = "";
-        btnFinalizar.textContent = "Registrar Presença";
-    } catch (erro) {
-        exibirJanelaSucesso("Erro na transmissão. Dados salvos localmente no cache.");
+        alert("🚀 Registro enviado com sucesso à Central BTEC!");
+        formulario.reset();
+        window.location.reload();
+    } catch (err) {
+        alert("❌ Erro de conexão ao enviar dados. Tente novamente.");
     } finally {
-        btnFinalizar.disabled = false;
+        btn.disabled = false;
+        btn.textContent = "REGISTRAR OPERAÇÃO";
     }
 });
 
-function converterParaBase64(file) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                let width = img.width; let height = img.height;
-                const MAX = 1024;
-                if (width > height && width > MAX) { height *= MAX / width; width = MAX; }
-                else if (height > MAX) { width *= MAX / height; height = MAX; }
-                canvas.width = width; canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.7));
-            };
-        };
-    });
-}
-
-function exibirJanelaSucesso(msg) { 
-    msgSucesso.textContent = msg; 
-    telaSucesso.classList.remove("hidden"); 
-}
-function fecharSucesso() { 
-    telaSucesso.classList.add("hidden"); 
-}
-
 document.addEventListener("DOMContentLoaded", () => {
     obterParametrosURL();
+    carregarDadosIniciais(paramsGlobais.prefixo, paramsGlobais.familia);
+
+    // 🕒 DISPARADOR DO ALERTA APÓS AS 16h
+    const horaAtual = new Date().getHours();
+    if (horaAtual >= 16) {
+        const alerta = document.createElement("div");
+        alerta.style.background = "rgba(255, 74, 74, 0.15)";
+        alerta.style.border = "1px solid #ff4a4a";
+        alerta.style.padding = "14px";
+        alerta.style.borderRadius = "8px";
+        alerta.style.marginBottom = "18px";
+        alerta.style.fontSize = "12px";
+        alerta.style.color = "#ffffff";
+        alerta.style.lineHeight = "1.5";
+        alerta.innerHTML = `
+            <strong>🚨 ALERTA DE HORÁRIO LIMITE EXCEDIDO:</strong><br>
+            O horário padrão de fechamento diário da frota (16:00h) foi ultrapassado. 
+            Este envio passará por auditoria manual da supervisão para validação do bônus.
+        `;
+        formulario.insertBefore(alerta, formulario.firstChild);
+    }
 });
+
+window.addEventListener("online", atualizarStatusRede);
+window.addEventListener("offline", atualizarStatusRede);
