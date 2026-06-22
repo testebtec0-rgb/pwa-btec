@@ -35,7 +35,7 @@ async function carregarDadosIniciais(prefixo, familia) {
         atualizarStatusRede();
         const urlFinal = `${GOOGLE_SCRIPT_URL}?prefixo=${encodeURIComponent(prefixo)}&familia=${encodeURIComponent(familia)}`;
         
-        painelAssistente.innerHTML = `⏳ Sincronizando dados patrimoniais...`;
+        painelAssistente.innerHTML = `⏳ Conectando à central BTEC...`;
 
         const response = await fetch(urlFinal);
         if (!response.ok) throw new Error();
@@ -43,31 +43,30 @@ async function carregarDadosIniciais(prefixo, familia) {
 
         camposSalvosServidor = dados.campos || [];
         
-        // 🆕 INJEÇÃO COMPACTA E ELEGANTE DE MÚLTIPLAS INFORMAÇÕES ADICIONAIS
-        if (dados.descricao && dados.descricao.trim() !== "") {
+        // EXIBIÇÃO INTELIGENTE E COMPACTA DE MÚLTIPLAS COLUNAS
+        if (dados.descricao) {
             labelPrefixo.innerHTML = `
                 ${prefixo.toUpperCase()}
-                <span style="display:block; font-size:10px; font-weight:normal; color:#94a3b8; margin-top:5px; text-transform:none; line-height:1.4; white-space:normal; font-style:italic;">
+                <span style="display:block; font-size:10px; font-weight:normal; color:var(--cor-subtext); margin-top:5px; text-transform:none; line-height:1.3; max-width:180px; white-space:normal; font-style:italic;">
                     ${dados.descricao}
                 </span>
             `;
+        } else {
+            labelPrefixo.textContent = prefixo.toUpperCase();
         }
 
-        // Sistema Inteligente de Alerta de Turno
         if (dados.jaRegistradoHoje) {
             painelAssistente.style.borderLeft = "4px solid #2196f3";
-            painelAssistente.innerHTML = `🤖 Equipamento <strong>${prefixo}</strong> já realizou a inspeção matinal hoje. Os campos flexíveis foram configurados como <strong>opcionais</strong> para este turno.`;
+            painelAssistente.innerHTML = `🤖 Equipamento <strong>${prefixo}</strong> já realizou a inspeção matinal hoje. Os campos técnicos detalhados foram definidos como <strong>opcionais</strong> para este turno.`;
         } else {
-            painelAssistente.style.borderLeft = "4px solid #00e676";
+            painelAssistente.style.borderLeft = "4px solid var(--cor-sucesso)";
             painelAssistente.innerHTML = `🤖 Primeiro registro do dia para o equipamento <strong>${prefixo}</strong>. O preenchimento dos campos com <span style="color:#ff4a4a">*</span> é <strong>obrigatório</strong>.`;
         }
-
-        montarFormularioDinamico(camposSalvosServidor);
         
     } catch (erro) {
-        painelAssistente.style.borderLeft = "4px solid #ff4a4a";
-        painelAssistente.innerHTML = `❌ <strong>Erro de Link:</strong> Não foi possível sincronizar os dados com a planilha BTEC.`;
+        painelAssistente.innerHTML = `❌ <strong>Erro:</strong> Não foi possível sincronizar os dados da central.`;
     }
+}
 }
 
 function montarFormularioDinamico(campos) {
