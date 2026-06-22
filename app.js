@@ -1,5 +1,5 @@
+// CONFIGURAÇÃO CENTRAL DA CENTRAL BTEC
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwCuSg7QuzCwGnG42TGSrtcVl14lSaq_X5WEzOt4Fv93L7EgS13rah9MZyQp0wsJ564/exec";
-
 // Captura de Elementos da Interface
 const labelPrefixo = document.getElementById("txt-prefixo");
 const labelFamilia = document.getElementById("txt-familia");
@@ -35,7 +35,7 @@ async function carregarDadosIniciais(prefixo, familia) {
         atualizarStatusRede();
         const urlFinal = `${GOOGLE_SCRIPT_URL}?prefixo=${encodeURIComponent(prefixo)}&familia=${encodeURIComponent(familia)}`;
         
-        painelAssistente.innerHTML = `⏳ Conectando à central BTEC...`;
+        painelAssistente.innerHTML = `⏳ Sincronizando dados patrimoniais...`;
 
         const response = await fetch(urlFinal);
         if (!response.ok) throw new Error();
@@ -43,30 +43,31 @@ async function carregarDadosIniciais(prefixo, familia) {
 
         camposSalvosServidor = dados.campos || [];
         
-        // EXIBIÇÃO INTELIGENTE E COMPACTA DE MÚLTIPLAS COLUNAS
-        if (dados.descricao) {
+        // 🆕 INJEÇÃO DINÂMICA COMPACTA MULTI-COLUNAS (Lê tudo o que tiver a partir da coluna C)
+        if (dados.descricao && dados.descricao.trim() !== "") {
             labelPrefixo.innerHTML = `
                 ${prefixo.toUpperCase()}
-                <span style="display:block; font-size:10px; font-weight:normal; color:var(--cor-subtext); margin-top:5px; text-transform:none; line-height:1.3; max-width:180px; white-space:normal; font-style:italic;">
+                <span style="display:block; font-size:10px; font-weight:normal; color:#a0aec0; margin-top:5px; text-transform:none; line-height:1.4; white-space:normal; font-style:italic;">
                     ${dados.descricao}
                 </span>
             `;
-        } else {
-            labelPrefixo.textContent = prefixo.toUpperCase();
         }
 
+        // Renderização inteligente do assistente (Primeiro registro vs Turnos seguintes)
         if (dados.jaRegistradoHoje) {
             painelAssistente.style.borderLeft = "4px solid #2196f3";
-            painelAssistente.innerHTML = `🤖 Equipamento <strong>${prefixo}</strong> já realizou a inspeção matinal hoje. Os campos técnicos detalhados foram definidos como <strong>opcionais</strong> para este turno.`;
+            painelAssistente.innerHTML = `🤖 Equipamento <strong>${prefixo}</strong> já realizou a inspeção matinal hoje. Os campos flexíveis foram configurados como <strong>opcionais</strong> para este turno.`;
         } else {
-            painelAssistente.style.borderLeft = "4px solid var(--cor-sucesso)";
+            painelAssistente.style.borderLeft = "4px solid #00e676";
             painelAssistente.innerHTML = `🤖 Primeiro registro do dia para o equipamento <strong>${prefixo}</strong>. O preenchimento dos campos com <span style="color:#ff4a4a">*</span> é <strong>obrigatório</strong>.`;
         }
+
+        montarFormularioDinamico(camposSalvosServidor);
         
     } catch (erro) {
-        painelAssistente.innerHTML = `❌ <strong>Erro:</strong> Não foi possível sincronizar os dados da central.`;
+        painelAssistente.style.borderLeft = "4px solid #ff4a4a";
+        painelAssistente.innerHTML = `❌ <strong>Erro de Link:</strong> Não foi possível puxar os campos dinâmicos da planilha BTEC.`;
     }
-}
 }
 
 function montarFormularioDinamico(campos) {
@@ -118,7 +119,7 @@ function montarFormularioDinamico(campos) {
     });
 }
 
-// Envio do Formulário
+// Lógica de Submissão e Verificação de Horário Limite (16h)
 formulario.addEventListener("submit", async (e) => {
     e.preventDefault();
     
@@ -169,7 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
     obterParametrosURL();
     carregarDadosIniciais(paramsGlobais.prefixo, paramsGlobais.familia);
 
-    // 🕒 DISPARADOR DO ALERTA APÓS AS 16h
+    // 🕒 VERIFICAÇÃO AUTOMÁTICA DE HORÁRIO LIMITE (16h)
     const horaAtual = new Date().getHours();
     if (horaAtual >= 16) {
         const alerta = document.createElement("div");
