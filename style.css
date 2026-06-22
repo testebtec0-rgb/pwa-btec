@@ -194,3 +194,8 @@ body {
     color: #94a3b8;
     cursor: not-allowed;
 }
+/* Classe utilitária para centralização de avisos e cabeçalhos */
+.texto-centralizado {
+    text-align: center !important;
+    justify-content: center !important;
+}
